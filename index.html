@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090f22" />
+    <title>Три в ряд — Самоцветы сумерек</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="audio.js" defer></script>
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <div class="backdrop" aria-hidden="true">
+      <span class="backdrop-orb orb-one"></span>
+      <span class="backdrop-orb orb-two"></span>
+      <span class="backdrop-orb orb-three"></span>
+      <span class="starfield"></span>
+      <span class="orbit orbit-one"></span>
+      <span class="orbit orbit-two"></span>
+    </div>
+
+    <main id="app" class="app-shell" data-view="start" data-level="1">
+      <div class="screen-stage">
+        <section id="start-screen" class="screen start-screen active" aria-labelledby="start-title">
+          <div class="start-card">
+            <div class="start-topline"><span>✦</span> МАЛЕНЬКОЕ ПУТЕШЕСТВИЕ ЗА СИЯНИЕМ <span>✦</span></div>
+            <div class="hero-scene" aria-hidden="true">
+              <span class="hero-orbit hero-orbit-one"></span><span class="hero-orbit hero-orbit-two"></span>
+              <svg viewBox="0 0 300 190" focusable="false">
+                <defs>
+                  <linearGradient id="heroRuby" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe3e5"/><stop offset=".4" stop-color="#ff6385"/><stop offset="1" stop-color="#802a63"/></linearGradient>
+                  <linearGradient id="heroGold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff2b9"/><stop offset=".5" stop-color="#ffce69"/><stop offset="1" stop-color="#a45f30"/></linearGradient>
+                  <linearGradient id="heroBlue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e9ffff"/><stop offset=".45" stop-color="#77d8ff"/><stop offset="1" stop-color="#3263bf"/></linearGradient>
+                </defs>
+                <ellipse cx="150" cy="161" rx="96" ry="14" fill="#e2bb8a" opacity=".11"/>
+                <path d="M65 68 91 58 113 84 103 128 70 142 43 115Z" fill="url(#heroBlue)" stroke="#e0f9ff" stroke-width="2"/><path d="m65 68 26-10-4 53-17 31-27-27 44-4 26-27" fill="#fff" opacity=".18"/>
+                <path d="M207 69 240 58 261 91 246 131 212 144 187 113Z" fill="url(#heroRuby)" stroke="#ffe9f1" stroke-width="2"/><path d="m207 69 33-11-13 54-15 32-25-31 40-1 34-21" fill="#fff" opacity=".18"/>
+                <path d="M113 47 187 47 219 84 192 141 150 169 108 141 81 84Z" fill="url(#heroGold)" stroke="#fff1c8" stroke-width="3"/>
+                <path d="M113 47 150 87 81 84m106-37-37 40 69-3M150 87v82m-69-85 69 3 69-3" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>
+                <path d="m113 47 74 0-37 40Z" fill="#fff" opacity=".35"/>
+                <path d="m122 52 25 28" stroke="#fff" stroke-opacity=".8" stroke-width="5" stroke-linecap="round"/>
+                <path d="M33 47v16m-8-8h16M260 27v16m-8-8h16M260 150v11m-6-5h12" stroke="#fff4ce" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="start-eyebrow">САМОЦВЕТЫ СУМЕРЕК</p>
+            <h1 id="start-title">Три в ряд</h1>
+            <p class="start-lead">Собирайте комбинации, разбивайте преграды и пройдите три этапа. Усиленные камни и бонусы помогут в пути.</p>
+            <div class="start-options">
+              <label>Сложность<select id="difficulty-select"><option value="easy">Легко · 3 вида</option><option value="normal" selected>Обычно · 5–6 видов</option><option value="hard">Сложно · 6 видов</option></select></label>
+              <label>Мир<select id="theme-select"><option value="gems">Самоцветы</option><option value="cosmos">Космос</option><option value="sweets">Сладости</option><option value="ocean">Подводный мир</option></select></label>
+            </div>
+            <button id="play-button" class="primary-action" type="button"><span>Играть</span><span aria-hidden="true">→</span></button>
+            <div class="start-record"><span>ЛУЧШИЙ РЕЗУЛЬТАТ</span><strong id="start-best">0</strong></div>
+            <button id="start-stats" class="secondary-action" type="button">Статистика →</button>
+          </div>
+        </section>
+
+        <section id="game-screen" class="screen game-screen" aria-label="Игровой экран" aria-hidden="true" inert>
+          <header class="topbar">
+            <div class="brand-gem" aria-hidden="true">
+              <svg viewBox="0 0 48 48"><path d="M15 5h18l11 13-20 25L4 18 15 5Z" fill="url(#brandFill)" stroke="#fff2c8" stroke-opacity=".8" stroke-width="1.5"/><path d="M15 5 24 18 4 18m29-13-9 13 20 0M24 18v25m-9-38 9 13 9-13" fill="none" stroke="#fff" stroke-opacity=".52" stroke-width="1.2"/><defs><linearGradient id="brandFill" x1="7" y1="5" x2="42" y2="41"><stop stop-color="#fff0b7"/><stop offset=".38" stop-color="#efaa51"/><stop offset="1" stop-color="#a54369"/></linearGradient></defs></svg>
+            </div>
+            <div class="title-block"><p class="eyebrow"><span></span> САМОЦВЕТЫ СУМЕРЕК</p><h2>Три в ряд</h2></div>
+            <div class="edition-tag"><span class="edition-star">✦</span><span>КОЛЛЕКЦИЯ<br /><strong>№ 01</strong></span></div>
+          </header>
+
+          <div class="game-panel">
+            <div class="panel-topline">
+              <div class="stage-heading"><span id="stage-label" class="panel-kicker">ЭТАП 1 / 3</span><strong id="stage-name">Первые искры</strong></div>
+              <div class="stage-goal"><span>ЦЕЛЬ ЭТАПА</span><strong id="stage-target">20</strong></div>
+            </div>
+            <div id="stage-progress" class="stage-progress" role="progressbar" aria-label="Прогресс этапа" aria-valuemin="0" aria-valuenow="0" aria-valuemax="20"><span id="progress-fill"></span></div>
+            <div class="mission-row"><span id="stage-objective">Соберите 20 синих камней</span><span id="stage-count">0 / 20</span></div>
+
+            <div class="hud">
+              <div class="score-box" aria-live="polite" aria-atomic="true">
+                <span class="score-icon" aria-hidden="true">✦</span>
+                <span class="score-copy"><span class="hud-label">ВАШ СЧЁТ</span><strong id="score">0</strong></span>
+              </div>
+              <button id="sound-toggle" class="sound-toggle" type="button" aria-label="Выключить звук" aria-pressed="true" title="Выключить звук">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path class="speaker-shape" d="M4 9v6h4l5 4V5L8 9H4Z"/><path class="sound-wave" d="M16 9a4 4 0 0 1 0 6m2.5-8.5a7.5 7.5 0 0 1 0 11"/><path class="sound-muted" d="m16 9 5 6m0-6-5 6"/></svg>
+              </button>
+              <button id="new-game" class="new-game" type="button"><span class="button-icon" aria-hidden="true">⟳</span><span>Новая игра</span></button>
+            </div>
+            <div class="power-row"><span id="combo-indicator" class="combo-indicator" aria-live="polite">Комбо ×1</span><div class="power-actions"><button id="power-hammer" type="button" title="Молоток: удалить один камень" aria-label="Молоток: удалить один камень">🔨 <span>1</span></button><button id="power-shuffle" type="button" title="Перемешать поле" aria-label="Перемешать поле">⤨ <span>1</span></button><button id="power-swap" type="button" title="Поменять любые два камня" aria-label="Поменять любые два камня">✧ <span>1</span></button></div></div>
+
+            <p class="instruction"><span class="instruction-dot" aria-hidden="true"></span>Выберите самоцвет, затем соседний, чтобы поменять их местами</p>
+            <div class="board-frame"><div class="frame-glint" aria-hidden="true"></div><div id="board" class="board" role="group" aria-label="Игровое поле 8 на 8"></div></div>
+            <div id="combo-reaction" class="combo-reaction" role="status" aria-live="polite" aria-atomic="true"><span class="reaction-flare" aria-hidden="true">✦</span><strong></strong><span class="reaction-flare" aria-hidden="true">✦</span></div>
+            <div class="status-row"><span class="status-gem" aria-hidden="true">✧</span><p id="status" class="status" role="status" aria-live="polite">Соберите три одинаковых камня в ряд</p><span class="status-gem" aria-hidden="true">✧</span></div>
+          </div>
+        </section>
+
+        <section id="result-screen" class="screen result-screen" aria-labelledby="result-title" aria-hidden="true" inert>
+          <div class="result-card">
+            <div class="result-crest" aria-hidden="true"><span>✦</span></div>
+            <p id="result-kicker" class="result-kicker">ЭТАП ПРОЙДЕН</p>
+            <h2 id="result-title" tabindex="-1">Первые искры собраны!</h2>
+            <p id="result-description" class="result-description">Впереди новые самоцветы и комбинации.</p>
+            <div class="result-metrics">
+              <div><span>ВАШ РЕЗУЛЬТАТ</span><strong id="result-score">0</strong></div>
+              <div><span>ЛУЧШИЙ РЕЗУЛЬТАТ</span><strong id="result-best">0</strong></div>
+            </div>
+            <button id="result-primary" class="primary-action" type="button"><span>Следующий этап</span><span aria-hidden="true">→</span></button>
+            <button id="result-menu" class="secondary-action" type="button">На главный экран</button>
+            <button id="result-stats" class="secondary-action" type="button">Статистика</button>
+          </div>
+        </section>
+
+        <section id="stats-screen" class="screen stats-screen" aria-labelledby="stats-title" aria-hidden="true" inert>
+          <div class="result-card stats-card">
+            <div class="result-crest" aria-hidden="true"><span>✦</span></div>
+            <p class="result-kicker">ВАША КОЛЛЕКЦИЯ</p>
+            <h2 id="stats-title" tabindex="-1">Статистика</h2>
+            <div class="stats-grid">
+              <div><span>Сыграно партий</span><strong id="stat-games">0</strong></div>
+              <div><span>Лучший результат</span><strong id="stat-best">0</strong></div>
+              <div><span>Длиннейший каскад</span><strong id="stat-cascade">0</strong></div>
+              <div><span>Максимальное комбо</span><strong id="stat-combo">×1</strong></div>
+              <div class="stat-wide"><span>Собрано камней</span><strong id="stat-gems">0</strong></div>
+            </div>
+            <button id="stats-back" class="primary-action" type="button"><span>Назад</span><span aria-hidden="true">→</span></button>
+          </div>
+        </section>
+      </div>
+      <footer class="footer-note"><span></span> НАЙДИТЕ СВОЁ СОКРОВИЩЕ <span></span></footer>
+    </main>
+  </body>
+</html>
