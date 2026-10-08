@@ -6,13 +6,39 @@ const vm = require("node:vm");
 
 class Element {
   constructor() {
-    this.innerHTML = ""; this.textContent = ""; this.listeners = {}; this.attributes = {};
-    this.style = {}; this.dataset = {}; this.classes = new Set();
+    this._html = ""; this.children = []; this.htmlWrites = 0; this.textContent = ""; this.listeners = {}; this.attributes = {};
+    this.style = { setProperty(n, v) { this[n] = v; } }; this.dataset = {}; this.classes = new Set();
     this.classList = { add: n => this.classes.add(n), remove: n => this.classes.delete(n), toggle: (n, on) => on ? this.classes.add(n) : this.classes.delete(n) };
   }
+  set innerHTML(value) {
+    this.htmlWrites++;
+    this._html = value; this.children = []; this.gemNode = null;
+    for (const match of value.matchAll(/<button ([^>]+)>(.*?)<\/button>/gs)) {
+      const tile = new Element(); tile.parent = this;
+      for (const attr of match[1].matchAll(/([\w-]+)="([^"]*)"/g)) tile.setAttribute(attr[1], attr[2]);
+      tile.innerHTML = match[2]; this.children.push(tile);
+    }
+  }
+  get innerHTML() { return this.children.length ? this.children.map(tile => tile.outerHTML).join("") : this._html; }
+  get outerHTML() { return `<button class="${this.className}" ${Object.entries(this.attributes).filter(([key]) => key !== "class").map(([key, value]) => `${key}="${value}"`).join(" ")}>${this.innerHTML}</button>`; }
+  get className() { return [...this.classes].join(" "); }
+  set className(value) { this.classes = new Set(value.split(/\s+/).filter(Boolean)); }
   addEventListener(n, fn) { this.listeners[n] = fn; }
-  setAttribute(n, v) { this.attributes[n] = v; }
-  querySelector(s) { return s === "span" || s === "strong" ? (this.child ||= new Element()) : null; }
+  setAttribute(n, v) { this.attributes[n] = String(v); if (n === "class") this.className = v; if (n.startsWith("data-")) this.dataset[n.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = String(v); }
+  getAttribute(n) { return this.attributes[n] ?? null; }
+  removeAttribute(n) { delete this.attributes[n]; if (n.startsWith("data-")) delete this.dataset[n.slice(5).replace(/-([a-z])/g, (_, c) => c.toUpperCase())]; }
+  querySelector(s) {
+    if (s === "span" || s === "strong") return (this.child ||= new Element());
+    if (s === ".gem" && this._html.includes('class="gem ')) { if (!this.gemNode) { this.gemNode = new Element(); this.gemNode.parent = this; } return this.gemNode; }
+    if (s === ".tile") return this.children[0];
+    return null;
+  }
+  querySelectorAll() { return this.children; }
+  closest() { return this.dataset.index !== undefined ? this : this.parent?.closest(); }
+  getBoundingClientRect() { const index = Number(this.dataset.index ?? this.parent?.dataset.index ?? 0); return {left:index % 8 * 40, top:Math.floor(index / 8) * 40, width:36, height:36}; }
+  setPointerCapture(id) { this.pointerId = id; }
+  hasPointerCapture(id) { return this.pointerId === id; }
+  releasePointerCapture() { this.pointerId = null; }
   focus() { this.focused = true; }
 }
 const ids = ["app", "start-screen", "game-screen", "result-screen", "stats-screen", "play-button", "result-primary", "result-menu", "start-stats", "result-stats", "stats-back", "difficulty-select", "theme-select", "start-best", "result-best", "result-score", "result-kicker", "result-title", "result-description", "stage-label", "stage-name", "stage-target", "stage-progress", "progress-fill", "stage-objective", "stage-count", "combo-indicator", "power-hammer", "power-shuffle", "power-swap", "stat-games", "stat-best", "stat-cascade", "stat-combo", "stat-gems", "stats-title", "board", "score", "status", "new-game", "sound-toggle", "combo-reaction"];
@@ -32,10 +58,11 @@ let hintCallback = null;
 const hintToken = {};
 const sandbox = {
   document: { getElementById: id => el[id], body: new Element() },
-  window: { localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v) }, gameSound: sound, matchMedia: () => ({ matches: false }) },
+  window: { localStorage: { getItem: k => storage.get(k) ?? null, setItem: (k, v) => storage.set(k, v) }, gameSound: sound, matchMedia: () => ({ matches: false }), addEventListener() {} },
   Math: randomMath,
   setTimeout: (fn, ms) => ms === 10000 ? (hintCallback = fn, hintToken) : setTimeout(fn, Math.min(ms, 2)),
-  clearTimeout: timer => timer === hintToken ? (hintCallback = null) : clearTimeout(timer)
+  clearTimeout: timer => timer === hintToken ? (hintCallback = null) : clearTimeout(timer),
+  requestAnimationFrame: fn => setTimeout(fn, 1), cancelAnimationFrame: clearTimeout
 };
 vm.runInNewContext(source, sandbox);
 const tiles = () => [...el.board.innerHTML.matchAll(/<button class="([^"]+)"[^>]*data-index="(\d+)"[^>]*>(.*?)<\/button>/gs)].map(m => ({ classes: m[1], index: Number(m[2]), type: m[3].match(/class="gem ([a-z]+)"/)?.[1] || null }));
@@ -67,7 +94,11 @@ function validPair(a, b) {
   if (!t[a].type || !t[b].type || /obstacle-/.test(t[a].classes + t[b].classes)) return false;
   return /special-(color|row|col)/.test(t[a].classes + t[b].classes) || swapMatches(t.map(x => x.type), a, b).size > 0;
 }
-function clickGem(i) { el.board.listeners.click({ target: { closest: () => ({ dataset: { index: String(i) } }) } }); }
+function clickGem(i, detail = 0) { el.board.listeners.click({ detail, target: { closest: () => ({ dataset: { index: String(i) } }) } }); }
+function pointer(name, index, pointerId = 7) {
+  el.board.listeners[name]({ target: el.board.children[index], clientX:index % 8 * 40 + 18, clientY:Math.floor(index / 8) * 40 + 18,
+    pointerId, isPrimary:true, button:0, preventDefault() {} });
+}
 async function waitFor(predicate) {
   for (let i = 0; i < 1000; i++) { if (predicate()) return; await new Promise(r => setTimeout(r, 2)); }
   throw new Error(`timeout: view=${view()}, score=${score()}, status=${el.status.textContent}`);
@@ -105,6 +136,31 @@ async function validMove() {
   await waitFor(() => el.status.textContent === "Комбинация не получилась" && types().join() === original.join());
   await new Promise(r => setTimeout(r, 8));
   assert.equal(score(), 0);
+
+  const cells = [...el.board.children];
+  const writesBeforeSelect = cells.reduce((sum, tile) => sum + tile.htmlWrites, 0);
+  clickGem(0); clickGem(0);
+  assert.equal(cells.reduce((sum, tile) => sum + tile.htmlWrites, 0), writesBeforeSelect, "selection does not recreate any SVG");
+  pointer("pointerdown", 2);
+  assert(cells[2].hasPointerCapture(7), "pointer capture stays on the pressed cell so taps retain their target");
+  pointer("pointerup", 2); clickGem(2, 1);
+  assert.equal(cells[2].getAttribute("aria-pressed"), "true", "a tap without dragging still selects the gem");
+  clickGem(2, 1);
+  pointer("pointerdown", bad[0]);
+  for (let move = 0; move < 60; move++) pointer("pointermove", bad[1]);
+  await new Promise(resolve => setTimeout(resolve, 3));
+  assert(el.board.children[bad[0]].querySelector(".gem").style.transform.includes("translate3d"), "gem follows the pointer");
+  assert.equal(cells.reduce((sum, tile) => sum + tile.htmlWrites, 0), writesBeforeSelect, "dragging does not redraw cells");
+  el.board.listeners.pointercancel();
+  assert.equal(el.board.children[bad[0]].querySelector(".gem").style.transform, "", "cancelled touch clears the translation");
+  assert.equal(types().join(), original.join());
+  const dragPair = pairs().find(([a, b]) => validPair(a, b));
+  pointer("pointerdown", dragPair[0]); pointer("pointermove", dragPair[1]); pointer("pointerup", dragPair[1]);
+  clickGem(dragPair[1], 1); // Synthetic click after pointerup must not start another move.
+  await waitFor(() => score() > 0 && (view() === "result" || /Соберите следующую комбинацию|перемешаны/.test(el.status.textContent)));
+  await new Promise(resolve => setTimeout(resolve, 8));
+  assert.equal(el.board.htmlWrites, 1, "board is created once across swaps and cascades");
+  cells.forEach((cell, index) => assert.equal(el.board.children[index], cell, "cell DOM identity is preserved"));
 
   let cascadeObserved = false;
   for (let stage = 0; stage < 3; stage++) {

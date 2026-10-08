@@ -99,6 +99,13 @@
   let powerFirst = null;
   let powers = { hammer: 1, shuffle: 1, swap: 1 };
   let statsReturnView = "start";
+  let renderedTiles = [];
+  let tileContents = [];
+  const gemArtCache = new Map();
+  let pointerDrag = null;
+  let dragFrame = 0;
+  let suppressClickUntil = 0;
+  let fitFrame = 0;
 
   const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
   const prefersReducedMotion = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -124,26 +131,36 @@
     [board[a], board[b]] = [board[b], board[a]];
   }
 
-  function captureGemPositions() {
+  function captureGemPositions(indexes = [0, 1]) {
     if (typeof boardElement.querySelectorAll !== "function") return new Map();
-    return new Map([...boardElement.querySelectorAll(".tile[data-gem-id]")].map(tile => [tile.dataset.gemId, tile.getBoundingClientRect()]));
+    return new Map(indexes.map(index => {
+      const tile = renderedTiles[index];
+      return tile?.dataset.gemId ? [tile.dataset.gemId, tile.querySelector(".gem").getBoundingClientRect()] : null;
+    }).filter(Boolean));
+  }
+
+  function boardScale() {
+    return boardElement.offsetWidth ? boardElement.getBoundingClientRect().width / boardElement.offsetWidth : 1;
   }
 
   function animateGemMoves(previousPositions) {
     if (!previousPositions.size || typeof boardElement.querySelectorAll !== "function" || prefersReducedMotion()) return;
-    for (const tile of boardElement.querySelectorAll(".tile[data-gem-id]")) {
+    const moves = [];
+    const scale = boardScale();
+    for (const tile of renderedTiles) {
       const previous = previousPositions.get(tile.dataset.gemId);
       const gem = tile.querySelector(".gem");
       if (!previous || !gem || typeof gem.animate !== "function") continue;
-      const current = tile.getBoundingClientRect();
-      const dx = previous.left - current.left;
-      const dy = previous.top - current.top;
+      const current = gem.getBoundingClientRect();
+      const dx = (previous.left - current.left) / scale;
+      const dy = (previous.top - current.top) / scale;
       if (Math.abs(dx) < 1 && Math.abs(dy) < 1) continue;
-      gem.animate([
-        { transform: `translate(${dx}px, ${dy}px) scale(.94)` },
-        { offset: .76, transform: `translate(${dx * -.035}px, ${dy * -.035}px) scale(1.045)` },
-        { transform: "translate(0, 0) scale(1)" }
-      ], { duration: 190, easing: "cubic-bezier(.2,.78,.22,1)" });
+      moves.push({ gem, dx, dy });
+    }
+    // Сначала читаем геометрию, затем запускаем анимации: без чередования layout/write.
+    for (const { gem, dx, dy } of moves) {
+      gem.animate([{ transform: `translate3d(${dx}px, ${dy}px, 0)` }, { transform: "translate3d(0, 0, 0)" }],
+        { duration: 145, easing: "cubic-bezier(.2,.8,.25,1)" });
     }
   }
 
@@ -229,8 +246,7 @@
   }
 
   function render({ matched = new Set(), invalid = new Set(), spawned = new Map(), falling = new Map(), movements = new Map(), cascade = 1 } = {}) {
-    const focusedIndex = document.activeElement?.closest?.(".tile[data-index]")?.dataset.index;
-    boardElement.innerHTML = board.map((gem, index) => {
+    const states = board.map((gem, index) => {
       const row = Math.floor(index / SIZE) + 1;
       const col = index % SIZE + 1;
       const obstacle = obstacles[index];
@@ -250,16 +266,34 @@
         const level = Math.min(cascade, 6);
         style.push(`--burst-distance:${22 + (level - 1) * 6}px`, `--pop-scale:${(1.34 + (level - 1) * 0.055).toFixed(2)}`, `--flash-opacity:${Math.min(0.86, 0.48 + (level - 1) * 0.07).toFixed(2)}`);
       }
-      const styleAttribute = style.length ? ` style="${style.join(";")}"` : "";
       const sparks = matched.has(index) ? `<span class="spark-layer" aria-hidden="true">${sparkMarkup()}</span>` : "";
       const obstruction = obstacle ? `<span class="obstacle-mark" aria-hidden="true">${{ ice: "❄", chain: "⛓", crate: "✕", stone: "◆" }[obstacle.kind]}</span>` : "";
       const special = gem?.special ? `<span class="special-mark" aria-hidden="true">${{ row: "↔", col: "↕", color: "✹" }[gem.special]}</span>` : "";
       const label = obstacle ? `${{ ice: "лёд", chain: "цепь", crate: "ящик", stone: "камень" }[obstacle.kind]}${gem ? `, ${NAMES[gem.type]}` : ""}` : gem ? NAMES[gem.type] : "пусто";
-      return `<button class="${classes.join(" ")}" type="button" data-index="${index}"${gem ? ` data-gem-id="${gem.id}"` : ""} aria-label="Ряд ${row}, столбец ${col}: ${label}${gem?.special ? ", усиленный" : ""}" aria-pressed="${selected === index}"${styleAttribute}>${gem ? `<span class="gem ${gem.type}" aria-hidden="true">${gemMarkup(gem)}</span>` : ""}${obstruction}${special}${sparks}</button>`;
-    }).join("");
+      return { classes: classes.join(" "), style: style.join(";"), gemId: gem ? String(gem.id) : "",
+        label: `Ряд ${row}, столбец ${col}: ${label}${gem?.special ? ", усиленный" : ""}`, pressed: String(selected === index),
+        content: `${gem ? `<span class="gem ${gem.type}" aria-hidden="true">${gemMarkup(gem)}</span>` : ""}${obstruction}${special}${sparks}` };
+    });
+    if (!renderedTiles.length) {
+      boardElement.innerHTML = states.map((state, index) => `<button class="${state.classes}" type="button" data-index="${index}"${state.gemId ? ` data-gem-id="${state.gemId}"` : ""} aria-label="${state.label}" aria-pressed="${state.pressed}" style="${state.style}">${state.content}</button>`).join("");
+      renderedTiles = [...boardElement.querySelectorAll(".tile")];
+      tileContents = states.map(state => state.content);
+    } else states.forEach((state, index) => {
+      const tile = renderedTiles[index];
+      if (tile.className !== state.classes) tile.className = state.classes;
+      if (tile.getAttribute("style") !== state.style) tile.setAttribute("style", state.style);
+      if (tile.dataset.gemId !== state.gemId) {
+        if (state.gemId) tile.setAttribute("data-gem-id", state.gemId);
+        else tile.removeAttribute("data-gem-id");
+      }
+      if (tile.getAttribute("aria-label") !== state.label) tile.setAttribute("aria-label", state.label);
+      if (tile.getAttribute("aria-pressed") !== state.pressed) tile.setAttribute("aria-pressed", state.pressed);
+      if (tileContents[index] !== state.content) { tile.innerHTML = state.content; tileContents[index] = state.content; }
+    });
+    const currentIds = new Set(board.filter(Boolean).map(gem => gem.id));
+    for (const id of gemArtCache.keys()) if (!currentIds.has(id)) gemArtCache.delete(id);
     scoreElement.textContent = score.toLocaleString("ru-RU");
     animateGemMoves(movements);
-    if (focusedIndex !== undefined && currentView === "game") boardElement.querySelector?.(`[data-index="${focusedIndex}"]`)?.focus?.({ preventScroll: true });
   }
 
   function setStatus(message) {
@@ -362,6 +396,7 @@
   }
 
   function showView(nextView, moveFocus = true) {
+    cancelDrag();
     currentView = nextView;
     appElement.dataset.view = nextView;
     for (const [name, screen] of Object.entries(screens)) {
@@ -377,6 +412,29 @@
     }
     if (nextView === "game") scheduleHint();
     else clearHint();
+    scheduleScreenFit();
+  }
+
+  function scheduleScreenFit() {
+    if (fitFrame) cancelAnimationFrame(fitFrame);
+    fitFrame = requestAnimationFrame(() => {
+      fitFrame = 0;
+      const screen = screens[currentView];
+      if (currentView === "game" && screen.parentElement) {
+        const { clientWidth: width, clientHeight: height } = screen.parentElement;
+        const landscape = width / height >= 1.4 && height <= 600;
+        const layoutWidth = Math.max(width, landscape ? 520 : 300);
+        const layoutHeight = Math.max(height, landscape ? 300 : 460);
+        screen.style.setProperty("--game-width", `${layoutWidth}px`);
+        screen.style.setProperty("--game-height", `${layoutHeight}px`);
+        screen.style.setProperty("--game-scale", String(Math.min(1, width / layoutWidth, height / layoutHeight)));
+        return;
+      }
+      const card = screen.querySelector(".start-card, .result-card");
+      if (!card) return;
+      const scale = Math.min(1, screen.clientWidth / card.offsetWidth, screen.clientHeight / card.offsetHeight);
+      card.style.setProperty("--card-scale", String(scale));
+    });
   }
 
   function showReaction(cascade, shape = "") {
@@ -473,6 +531,14 @@
   }
 
   function gemMarkup(gem) {
+    const cached = gemArtCache.get(gem.id);
+    if (cached?.theme === theme) return cached.markup;
+    const markup = createGemMarkup(gem);
+    gemArtCache.set(gem.id, { theme, markup });
+    return markup;
+  }
+
+  function createGemMarkup(gem) {
     const { shape, colors } = GEM_ART[gem.type];
     const fillId = `gem-fill-${gem.id}`;
     const clipId = `gem-clip-${gem.id}`;
@@ -639,7 +705,7 @@
     }
   }
 
-  async function attemptSwap(a, b, free = false) {
+  async function attemptSwap(a, b, free = false, dragPositions = null) {
     busy = true;
     selected = null;
     combo = 1;
@@ -648,10 +714,10 @@
     clearHint();
     const currentGame = gameId;
     gameAudio?.swap();
-    const previousPositions = captureGemPositions();
+    const previousPositions = dragPositions || captureGemPositions([a, b]);
     swap(a, b);
     render({ movements: previousPositions });
-    await waitForAnimation(195);
+    await waitForAnimation(150);
     if (currentGame !== gameId) return;
 
     const colorTargets = new Map();
@@ -668,10 +734,10 @@
     if (!groups.length && !forced.size && !free) {
       gameAudio?.invalid();
       setStatus("Комбинация не получилась");
-      const swappedPositions = captureGemPositions();
+      const swappedPositions = captureGemPositions([a, b]);
       swap(a, b);
       render({ invalid: new Set([a, b]), movements: swappedPositions });
-      await waitForAnimation(205);
+      await waitForAnimation(160);
       if (currentGame !== gameId) return;
       render();
       busy = false;
@@ -692,6 +758,7 @@
   }
 
   function startNewGame(nextView = "game", countGame = true) {
+    cancelDrag();
     gameId++;
     clearReaction();
     clearHint();
@@ -720,6 +787,7 @@
   }
 
   function advanceStage() {
+    cancelDrag();
     gameId++;
     clearReaction();
     clearHint();
@@ -743,6 +811,7 @@
   }
 
   boardElement.addEventListener("click", event => {
+    if (event.detail !== 0 && Date.now() < suppressClickUntil) return;
     const tile = event.target.closest("[data-index]");
     if (!tile || busy || currentView !== "game") return;
     const index = Number(tile.dataset.index);
@@ -799,6 +868,98 @@
       scheduleHint();
     }
   });
+
+  function resetDragNeighbor() {
+    if (!pointerDrag?.neighbor) return;
+    pointerDrag.neighbor.classList.remove("drag-neighbor");
+    pointerDrag.neighbor.querySelector(".gem").style.transform = "";
+    pointerDrag.neighbor = null;
+  }
+
+  function cancelDrag() {
+    if (dragFrame) cancelAnimationFrame(dragFrame);
+    dragFrame = 0;
+    if (!pointerDrag) return;
+    resetDragNeighbor();
+    const { tile, gem, pointerId } = pointerDrag;
+    tile.classList.remove("dragging");
+    gem.style.transform = "";
+    pointerDrag = null;
+    boardElement.classList.remove("drag-active");
+    if (tile.hasPointerCapture?.(pointerId)) tile.releasePointerCapture(pointerId);
+  }
+
+  function drawDrag() {
+    dragFrame = 0;
+    const drag = pointerDrag;
+    if (!drag?.moved) return;
+    const horizontal = Math.abs(drag.dx) >= Math.abs(drag.dy);
+    const distance = horizontal ? drag.dx : drag.dy;
+    const step = horizontal ? drag.stepX : drag.stepY;
+    const delta = Math.sign(distance) * (horizontal ? 1 : SIZE);
+    const target = drag.index + delta;
+    const valid = target >= 0 && target < SIZE * SIZE && areAdjacent(drag.index, target) && board[target] && !obstacles[target];
+    drag.target = valid ? target : -1;
+    if (drag.neighbor !== renderedTiles[drag.target]) {
+      resetDragNeighbor();
+      if (valid) { drag.neighbor = renderedTiles[target]; drag.neighbor.classList.add("drag-neighbor"); }
+    }
+    const amount = valid ? Math.max(-step, Math.min(step, distance)) : Math.max(-step * .2, Math.min(step * .2, distance * .2));
+    const x = horizontal ? amount : 0, y = horizontal ? 0 : amount;
+    drag.gem.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    if (drag.neighbor) drag.neighbor.querySelector(".gem").style.transform = `translate3d(${-x}px, ${-y}px, 0)`;
+    drag.canSwap = valid && Math.abs(distance) >= step * .25;
+  }
+
+  boardElement.addEventListener("pointerdown", event => {
+    if (!event.isPrimary || event.button !== 0 || pointerDrag || busy || currentView !== "game" || powerMode) return;
+    const tile = event.target.closest(".tile[data-index]");
+    if (!tile) return;
+    const index = Number(tile.dataset.index);
+    if (!board[index] || obstacles[index]) return;
+    clearHint();
+    const first = renderedTiles[0].getBoundingClientRect(), next = renderedTiles[1].getBoundingClientRect();
+    const below = renderedTiles[SIZE].getBoundingClientRect();
+    const scale = boardScale();
+    pointerDrag = { index, tile, gem: tile.querySelector(".gem"), pointerId: event.pointerId,
+      startX: event.clientX, startY: event.clientY, scale, stepX: (next.left - first.left) / scale, stepY: (below.top - first.top) / scale,
+      dx: 0, dy: 0, moved: false, target: -1, neighbor: null, canSwap: false };
+    tile.setPointerCapture(event.pointerId);
+  });
+  boardElement.addEventListener("pointermove", event => {
+    const drag = pointerDrag;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    drag.dx = (event.clientX - drag.startX) / drag.scale;
+    drag.dy = (event.clientY - drag.startY) / drag.scale;
+    if (!drag.moved && Math.hypot(drag.dx, drag.dy) < 4) return;
+    if (!drag.moved) {
+      drag.moved = true;
+      drag.tile.classList.add("dragging");
+      boardElement.classList.add("drag-active");
+    }
+    event.preventDefault();
+    if (!dragFrame) dragFrame = requestAnimationFrame(drawDrag);
+  });
+  boardElement.addEventListener("pointerup", event => {
+    if (!pointerDrag || pointerDrag.pointerId !== event.pointerId) return;
+    pointerDrag.dx = (event.clientX - pointerDrag.startX) / pointerDrag.scale;
+    pointerDrag.dy = (event.clientY - pointerDrag.startY) / pointerDrag.scale;
+    if (dragFrame) cancelAnimationFrame(dragFrame);
+    if (pointerDrag.moved) drawDrag();
+    const { index, target, moved, canSwap } = pointerDrag;
+    const positions = canSwap ? captureGemPositions([index, target]) : null;
+    if (moved) suppressClickUntil = Date.now() + 300;
+    cancelDrag();
+    if (canSwap) { event.preventDefault(); attemptSwap(index, target, false, positions); }
+    else scheduleHint();
+  });
+  boardElement.addEventListener("pointercancel", () => { if (pointerDrag?.moved) suppressClickUntil = Date.now() + 300; cancelDrag(); scheduleHint(); });
+  boardElement.addEventListener("lostpointercapture", () => { cancelDrag(); });
+  boardElement.addEventListener("dragstart", event => event.preventDefault());
+  window.addEventListener("blur", cancelDrag);
+  window.addEventListener("resize", () => { cancelDrag(); scheduleScreenFit(); });
+  window.visualViewport?.addEventListener("resize", scheduleScreenFit);
+  if (typeof ResizeObserver !== "undefined") new ResizeObserver(scheduleScreenFit).observe(appElement);
 
   for (const [name, button] of Object.entries(powerButtons)) button.addEventListener("click", () => {
     if (busy || currentView !== "game" || powers[name] <= 0) return;

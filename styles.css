@@ -479,3 +479,113 @@ body[data-theme="ocean"] .app-shell { --stage-accent: #a1f3ed; }
   .start-card .start-lead { margin: 5px 0 8px; }
   .start-card .start-record { margin-top: 8px; }
 }
+
+/* Поле получает оставшееся место в экране, включая мобильные панели браузера. */
+html, body { width: 100%; height: 100%; min-height: 0; overflow: hidden; overscroll-behavior: none; }
+body { height: 100vh; height: 100dvh; }
+.app-shell {
+  flex-direction: column; gap: 0; width: min(100%, 890px); height: 100%; min-height: 0;
+  padding: max(8px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+}
+.screen-stage { flex: 1 1 0; width: min(100%, 760px); min-height: 0; }
+.screen, .screen.active { position: absolute; inset: 0; height: 100%; min-height: 0; }
+.start-screen, .result-screen, .stats-screen { display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.start-card, .result-card, .stats-card { flex: 0 0 auto; height: auto; min-height: 0; transform: scale(var(--card-scale, 1)); transform-origin: center; }
+.game-screen, .game-screen.active {
+  inset: auto; left: 50%; top: 50%; width: var(--game-width, 100%); height: var(--game-height, 100%);
+  transform: translate(-50%, -50%) scale(var(--game-scale, 1)); transition-property: opacity, visibility;
+}
+.game-screen { display: flex; flex-direction: column; gap: 0; min-height: 0; }
+.game-screen .topbar { flex: 0 0 auto; width: 100%; min-width: 0; margin: 0 0 10px; gap: 10px; }
+.header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.header-actions .sound-toggle { flex: 0 0 40px; width: 40px; min-height: 40px; border-radius: 11px; }
+.header-actions .new-game { min-height: 40px; padding: 0 13px; border-radius: 11px; font-size: 12px; }
+.game-screen .brand-gem { flex-basis: 38px; width: 38px; height: 44px; }
+.game-screen .title-block h2 { font-size: 30px; white-space: nowrap; }
+.game-screen .edition-tag { display: flex; margin-left: auto; }
+.game-screen .edition-tag + .header-actions { margin-left: 0; }
+.game-screen .game-panel {
+  flex: 1 1 0; display: flex; flex-direction: column; width: 100%; min-height: 0;
+  padding: 12px 16px 10px; backdrop-filter: none;
+}
+.game-panel > :not(.board-space):not(.combo-reaction) { flex-shrink: 0; }
+.panel-topline { margin-bottom: 7px; }
+.stage-progress { margin-bottom: 10px; }
+.mission-row { margin: -3px auto 7px; }
+.hud { justify-content: center; }
+.score-box { min-width: 120px; padding: 5px 12px; }
+.power-row { margin-top: 7px; }
+.instruction { margin: 8px 0; }
+.board-space {
+  position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 0;
+  display: flex; align-items: center; justify-content: center; container-type: size;
+}
+.game-screen .board-frame { flex: 0 0 auto; width: min(100cqw, 100cqh, 610px); aspect-ratio: 1; margin: 0; padding: 6px; }
+.board { width: 100%; height: 100%; aspect-ratio: 1; grid-template-rows: repeat(8, minmax(0, 1fr)); touch-action: none; user-select: none; -webkit-user-select: none; }
+.tile { touch-action: none; }
+.gem, .gem svg { pointer-events: none; -webkit-user-drag: none; }
+.combo-reaction { position: absolute; z-index: 8; left: 50%; bottom: 38px; margin: 0; white-space: nowrap; transform: translateX(-50%) translateY(4px) scale(.96); }
+.combo-reaction.visible { transform: translateX(-50%); animation: none; }
+.status-row { min-height: 26px; margin-top: 8px; }
+.status { overflow-wrap: anywhere; }
+.footer-note { flex: 0 0 auto; margin-top: 0; padding-top: 8px; line-height: 1.2; }
+.tile.dragging { z-index: 10; overflow: visible; transform: none; animation: none; }
+.tile.dragging .gem { transition: none; animation: none; will-change: transform; }
+.tile.drag-neighbor { z-index: 9; overflow: visible; }
+.tile.drag-neighbor .gem { transition: none; animation: none; will-change: transform; }
+.board.drag-active .tile:not(.dragging):not(.drag-neighbor) .gem { filter: drop-shadow(0 3px 2px #020817a0); }
+.board.drag-active .tile:hover .gem { transform: none; }
+@media (max-width: 600px) {
+  .game-screen .edition-tag { display: none; }
+  .game-screen .edition-tag + .header-actions { margin-left: auto; }
+  .game-screen .topbar { gap: 7px; margin-bottom: 8px; }
+  .game-screen .brand-gem { flex-basis: 28px; width: 28px; height: 36px; }
+  .game-screen .title-block h2 { font-size: clamp(22px, 6vw, 26px); }
+  .game-screen .eyebrow { display: none; }
+  .header-actions { gap: 6px; }
+  .header-actions .sound-toggle { flex-basis: 36px; width: 36px; min-height: 38px; }
+  .header-actions .new-game { gap: 5px; min-height: 38px; padding: 0 9px; font-size: 11px; }
+  .game-screen .game-panel { padding: 10px 10px 8px; border-radius: 20px; }
+  .score-box { min-width: 100px; padding: 4px 10px; }
+  .game-screen .board-frame { padding: 4px; }
+  .status-row { margin-top: 6px; }
+}
+@media (max-height: 600px) {
+  .footer-note { display: none; }
+  .game-screen .topbar { margin-bottom: 6px; }
+  .start-card, .result-card { padding: 14px 18px; }
+  .start-topline { font-size: 8px; }
+  .start-card .hero-scene { display: none; }
+  .start-eyebrow { margin-top: 12px; }
+  .start-card h1 { font-size: 38px; }
+  .start-card .start-lead { margin: 8px 0 12px; font-size: 12px; }
+  .start-options { margin-bottom: 12px; }
+  .primary-action { min-height: 42px; font-size: 14px; }
+  .start-card .start-record { margin-top: 12px; padding: 6px 12px; }
+  .start-card > .secondary-action, .secondary-action { margin-top: 6px; }
+  .result-crest { width: 44px; height: 44px; margin-bottom: 8px; border-radius: 15px; font-size: 28px; }
+  .result-card h2 { font-size: 27px; }
+  .result-description { margin: 8px 0 12px; }
+  .result-metrics { margin-bottom: 12px; }
+  .stats-grid { margin: 12px 0; }
+}
+@media (min-aspect-ratio: 7/5) and (max-height: 600px) {
+  .game-screen .game-panel {
+    display: grid; grid-template-columns: minmax(145px, .62fr) minmax(0, 1fr);
+    grid-template-rows: repeat(6, auto) minmax(0, 1fr); gap: 0 16px;
+    grid-template-areas: "stage board" "progress board" "mission board" "score board" "powers board" "instruction board" "status board";
+  }
+  .panel-topline { grid-area: stage; }
+  .stage-progress { grid-area: progress; width: 100%; }
+  .mission-row { grid-area: mission; width: 100%; }
+  .hud { grid-area: score; width: 100%; }
+  .power-row { grid-area: powers; width: 100%; gap: 6px; }
+  .combo-indicator { padding: 5px 6px; font-size: 9px; }
+  .power-actions { gap: 4px; }
+  .power-actions button { min-width: 34px; min-height: 32px; padding: 2px 4px; font-size: 14px; }
+  .power-actions button span { font-size: 10px; }
+  .instruction { grid-area: instruction; font-size: 10px; }
+  .board-space { grid-area: board; height: 100%; }
+  .status-row { grid-area: status; align-self: end; }
+  .combo-reaction { left: 75%; bottom: 15px; }
+}
