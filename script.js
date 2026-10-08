@@ -423,9 +423,11 @@
         const landscape = width / height >= 1.4 && height <= 600;
         const layoutWidth = Math.max(width, landscape ? 520 : 300);
         const layoutHeight = Math.max(height, landscape ? 300 : 460);
-        screen.style.setProperty("--game-width", `${layoutWidth}px`);
-        screen.style.setProperty("--game-height", `${layoutHeight}px`);
-        screen.style.setProperty("--game-scale", String(Math.min(1, width / layoutWidth, height / layoutHeight)));
+        const scale = Math.min(1, width / layoutWidth, height / layoutHeight);
+        // Обычные экраны меняют размер сразу через CSS, без ожидания следующего кадра.
+        screen.style.setProperty("--game-width", scale < 1 ? `${layoutWidth}px` : "100%");
+        screen.style.setProperty("--game-height", scale < 1 ? `${layoutHeight}px` : "100%");
+        screen.style.setProperty("--game-scale", String(scale));
         return;
       }
       const card = screen.querySelector(".start-card, .result-card");
