@@ -41,7 +41,7 @@ class Element {
   releasePointerCapture() { this.pointerId = null; }
   focus() { this.focused = true; }
 }
-const ids = ["app", "start-screen", "game-screen", "result-screen", "stats-screen", "play-button", "result-primary", "result-menu", "start-stats", "result-stats", "stats-back", "difficulty-select", "theme-select", "start-best", "result-best", "result-score", "result-kicker", "result-title", "result-description", "stage-label", "stage-name", "stage-target", "stage-progress", "progress-fill", "stage-objective", "stage-count", "combo-indicator", "power-hammer", "power-shuffle", "power-swap", "stat-games", "stat-best", "stat-cascade", "stat-combo", "stat-gems", "stats-title", "board", "score", "status", "new-game", "sound-toggle", "combo-reaction"];
+const ids = ["app", "start-screen", "game-screen", "result-screen", "stats-screen", "play-button", "result-primary", "result-menu", "start-stats", "result-stats", "stats-back", "difficulty-select", "theme-select", "start-best", "result-best", "result-score", "result-kicker", "result-title", "result-description", "stage-label", "stage-name", "stage-progress", "progress-fill", "stage-objective", "stage-count", "combo-indicator", "power-hammer", "power-shuffle", "power-swap", "stat-games", "stat-best", "stat-cascade", "stat-combo", "stat-gems", "stats-title", "board", "score", "status", "new-game", "sound-toggle", "combo-reaction"];
 const html = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
 for (const id of ids) assert(html.includes(`id="${id}"`), `missing HTML element: ${id}`);
 const el = Object.fromEntries(ids.map(id => [id, new Element()]));
@@ -222,12 +222,12 @@ async function validMove() {
   el["difficulty-select"].value = "easy"; el["difficulty-select"].listeners.change();
   press("new-game");
   assert(new Set(types()).size <= 3, "easy mode uses three colors");
-  assert.equal(el["stage-target"].textContent, "12", "easy mode lowers objective");
+  assert.equal(el["stage-progress"].getAttribute("aria-valuemax"), "12", "easy mode lowers objective");
   await validMove();
   el["difficulty-select"].value = "hard"; el["difficulty-select"].listeners.change();
   press("new-game");
   assert(new Set(types()).size >= 5, "hard mode uses more colors");
-  assert.equal(el["stage-target"].textContent, "28", "hard mode raises objective");
+  assert.equal(el["stage-progress"].getAttribute("aria-valuemax"), "28", "hard mode raises objective");
   press("sound-toggle"); assert.equal(el["sound-toggle"].attributes["aria-pressed"], "false");
   press("sound-toggle"); assert.equal(el["sound-toggle"].attributes["aria-pressed"], "true");
   for (const name of ["select", "swap", "invalid", "match", "complete"]) assert(soundCalls.some(([n]) => n === name), `${name} played`);

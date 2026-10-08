@@ -49,7 +49,6 @@
   const resultPrimaryLabel = resultPrimaryButton.querySelector("span");
   const stageLabelElement = document.getElementById("stage-label");
   const stageNameElement = document.getElementById("stage-name");
-  const stageTargetElement = document.getElementById("stage-target");
   const stageProgressElement = document.getElementById("stage-progress");
   const progressFillElement = document.getElementById("progress-fill");
   const stageObjectiveElement = document.getElementById("stage-objective");
@@ -369,7 +368,6 @@
       : Math.max(0, collected[level.objective] - stageStartCollected);
     stageLabelElement.textContent = `ЭТАП ${levelIndex + 1} / ${LEVELS.length}`;
     stageNameElement.textContent = level.name;
-    stageTargetElement.textContent = formatScore(target);
     stageObjectiveElement.textContent = level.objective === "score" ? `Наберите ${formatScore(target)} очков`
       : level.objective === "sapphire" ? `Соберите ${target} синих камней` : `Уничтожьте ${target} красных камней`;
     stageCountElement.textContent = `${formatScore(Math.min(progress, target))} / ${formatScore(target)}`;
