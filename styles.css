@@ -514,7 +514,12 @@ body { height: 100vh; height: 100dvh; }
 .mission-row { margin: -3px auto 7px; }
 .hud { justify-content: center; }
 .score-box { min-width: 120px; padding: 5px 12px; }
-.power-row { margin-top: 7px; }
+.game-panel > .power-row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center; gap: 10px; margin-top: 0;
+}
+.power-row > .combo-indicator { justify-self: start; }
+.power-row > .power-actions { justify-self: end; }
 .instruction { margin: 8px 0; }
 .board-space {
   position: relative; z-index: 1; flex: 1 1 0; min-width: 0; min-height: 0;
@@ -547,6 +552,13 @@ body { height: 100vh; height: 100dvh; }
   .header-actions .new-game { gap: 5px; min-height: 38px; padding: 0 9px; font-size: 11px; }
   .game-screen .game-panel { padding: 10px 10px 8px; border-radius: 20px; }
   .score-box { min-width: 100px; padding: 4px 10px; }
+  .game-panel > .power-row { grid-template-columns: auto minmax(0, 1fr) auto; gap: 6px; }
+  .power-row > .score-box { justify-self: center; }
+  .power-row .score-box { min-width: 86px; padding: 4px 7px; gap: 5px; }
+  .power-row .score-icon { display: none; }
+  .power-row .combo-indicator { padding: 6px; font-size: 9px; }
+  .power-row .power-actions { gap: 4px; }
+  .power-row .power-actions button { min-width: 32px; padding: 2px 4px; font-size: 14px; }
   .game-screen .board-frame { padding: 4px; }
   .status-row { margin-top: 6px; }
 }
@@ -572,17 +584,19 @@ body { height: 100vh; height: 100dvh; }
 @media (min-aspect-ratio: 7/5) and (max-height: 600px) {
   .game-screen .game-panel {
     display: grid; grid-template-columns: minmax(145px, .62fr) minmax(0, 1fr);
-    grid-template-rows: repeat(6, auto) minmax(0, 1fr); gap: 0 16px;
-    grid-template-areas: "stage board" "progress board" "mission board" "score board" "powers board" "instruction board" "status board";
+    grid-template-rows: repeat(5, auto) minmax(0, 1fr); gap: 0 16px;
+    grid-template-areas: "stage board" "progress board" "mission board" "powers board" "instruction board" "status board";
   }
   .panel-topline { grid-area: stage; }
   .stage-progress { grid-area: progress; width: 100%; }
   .mission-row { grid-area: mission; width: 100%; }
-  .hud { grid-area: score; width: 100%; }
-  .power-row { grid-area: powers; width: 100%; gap: 6px; }
+  .game-panel > .power-row { grid-area: powers; width: 100%; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .power-row > .combo-indicator { grid-column: 1 / -1; }
+  .power-row .score-box { min-width: 0; padding: 4px 6px; }
+  .power-row .score-icon { display: none; }
   .combo-indicator { padding: 5px 6px; font-size: 9px; }
   .power-actions { gap: 4px; }
-  .power-actions button { min-width: 34px; min-height: 32px; padding: 2px 4px; font-size: 14px; }
+  .power-row .power-actions button { min-width: 32px; min-height: 32px; padding: 2px 4px; font-size: 14px; }
   .power-actions button span { font-size: 10px; }
   .instruction { grid-area: instruction; font-size: 10px; }
   .board-space { grid-area: board; height: 100%; }
